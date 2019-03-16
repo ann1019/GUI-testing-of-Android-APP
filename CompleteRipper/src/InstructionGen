@@ -1,0 +1,248 @@
+import java.util.ArrayList;
+import java.util.List;
+
+import org.python.modules.thread.thread;
+
+import com.android.chimpchat.adb.AdbBackend;
+import com.android.chimpchat.adb.AdbChimpDevice;
+import com.android.chimpchat.core.TouchPressType;
+
+
+public class InstructionGen {
+	private String event;
+	private List<List<String>> instructions;
+	Command cmd = new Command();
+	String packageName;
+	String dis;
+	String history="history";
+	int lastNodeSize=-2;
+	
+	InstructionGen(String packageName, String dis){
+		this.packageName = packageName;
+		this.dis=dis;
+		instructions = new ArrayList<List<String>>();
+	}
+	
+	InstructionGen(String packageName,String dis,String history){
+		this.packageName = packageName;
+		this.dis=dis;
+		instructions = new ArrayList<List<String>>();
+		this.history=history;
+	}
+	
+	public  void parsingSymbolData(List<List<UIComponentNodes>> nodes) {
+		for (int i = 0; i < nodes.size(); i++)
+		{
+			List<String>buf=new ArrayList<String>();
+		for(int j=0;j<nodes.get(i).size();j++){
+			event = "";
+			
+			//System.out.println(nodes.get(i).get(j).className+"\n");
+			
+			switch (nodes.get(i).get(j).className) {
+			case "android.widget.Button":
+				symbol_button(nodes.get(i).get(j));
+				break;
+			case "android.widget.ImageButton":
+				symbol_button(nodes.get(i).get(j));
+				break;
+			case "android.widget.TextView":
+				symbol_button(nodes.get(i).get(j));
+				break;
+			case "android.widget.ImageView":
+				symbol_button(nodes.get(i).get(j));
+				break;
+			case "android.widget.ListView":
+				symbol_listview(nodes.get(i).get(j));
+				break;
+			case "android.widget.LinearLayout":
+				symbol_linearLayout(nodes.get(i).get(j));
+			}
+			if(event  != "")
+				buf.add(event);
+		if(instructions.size() == 0)
+			buf.add("#EMPTY\n");
+		}
+		instructions.add(buf);
+		}
+	}
+
+	private void symbol_listview(UIComponentNodes u) {
+		if (u.scrollable) {
+			int loopTimes = 5;
+			int x_center = (u.bounds[0][0] + u.bounds[1][0]) / 2;
+			int y_center = (u.bounds[0][1] + u.bounds[1][1]) / 2;
+			for (int i = 0; i < loopTimes; i++)
+				event_swipe_right(u.bounds[0][0], u.bounds[1][0], y_center);
+			for (int i = 0; i < loopTimes; i++)
+				event_swipe_left(u.bounds[0][0], u.bounds[1][0], y_center);
+			for (int i = 0; i < loopTimes; i++)
+				event_swipe_up(x_center, u.bounds[0][1], u.bounds[1][1]);
+			for (int i = 0; i < loopTimes; i++)
+				event_swipe_down(x_center, u.bounds[0][1], u.bounds[1][1]);
+		} else
+			no_op();
+	}
+
+	private void symbol_button(UIComponentNodes u) {
+		if (u.clickable)
+			event_tap((u.bounds[0][0] + u.bounds[1][0]) / 2, (u.bounds[0][1] + u.bounds[1][1]) / 2, 0);
+		if (u.longClickable)
+			event_tap((u.bounds[0][0] + u.bounds[1][0]) / 2, (u.bounds[0][1] + u.bounds[1][1]) / 2, 1);
+
+	}
+/*Linear Layout*/
+	private void symbol_linearLayout(UIComponentNodes u) {
+		if (u.clickable)
+			event_tap((u.bounds[0][0] + u.bounds[1][0]) / 2, (u.bounds[0][1] + u.bounds[1][1]) / 2, 0);
+		if (u.longClickable)
+			event_tap((u.bounds[0][0] + u.bounds[1][0]) / 2, (u.bounds[0][1] + u.bounds[1][1]) / 2, 1);
+
+	}
+	
+	/* Click: mode = 0, LongClick: mode = 1 */
+	private void event_tap(int x, int y, int mode) {
+		// fw.open();
+		switch (mode) {
+		case 0:
+			touch(x, y);
+			//event += "device.touch(" + Integer.toString(x) + ", "+ Integer.toString(y) + ", MonkeyDevice.DOWN_AND_UP)\n";
+			//DeviceWait(3);
+			//event +="MonkeyRunner.sleep(3.0)\n";
+
+			//GetLayout();
+			break;
+		case 1:
+			//device.touch(x,y,TouchPressType.DOWN_AND_UP);
+			touch(x, y);
+			//DeviceWait(3);
+			//event += "device.touch(" + Integer.toString(x) + ", "+ Integer.toString(y) + ", MonkeyDevice.DOWN)\n"+ "time.sleep(2);\n" + "device.touch("+ Integer.toString(x) + ", " + Integer.toString(y)+ ", MonkeyDevice.UP)\n";
+			touch(x, y, 1000);
+			//DeviceWait(3);
+			//event +="MonkeyRunner.sleep(3.0)\n";
+			//GetLayout();
+			break;
+		default:
+			;
+		}
+		// System.out.println(event);
+		// fw.flush();
+		// fw.close();
+	}
+
+	/* 左滑 */
+	private void event_swipe_left(int r, int l, int y) {
+		// fw.open();
+		swipe(r, y, l, y, 1000);
+		//event += "device.drag((" + Integer.toString(r) + ", "+ Integer.toString(y) + "), (" + Integer.toString(l) + ", "+ Integer.toString(y) + "), 0.1)    #Left\n";
+		//eviceWait(3);
+		//event +="MonkeyRunner.sleep(3.0)\n";
+		//GetLayout();
+	}
+
+	/* 右滑 */
+	private void event_swipe_right(int r, int l, int y) {
+		// fw.open();
+		swipe(l, y, r, y, 1000);
+		//event += "device.drag((" + Integer.toString(l) + ", "+ Integer.toString(y) + "), (" + Integer.toString(r) + ", "+ Integer.toString(y) + "), 0.1)    #Right\n";
+		//DeviceWait(3);
+		//event +="MonkeyRunner.sleep(3.0)\n";
+		//GetLayout();
+	}
+
+	/* 上滑 */
+	private void event_swipe_up(int x, int u, int d) {
+		// fw.open();
+		swipe(x, d-20, x, u+20, 1000);
+		//event += "device.drag((" + Integer.toString(x) + ", "+ Integer.toString(d - 20) + "), (" + Integer.toString(x)+ ", " + Integer.toString(u + 20) + "), 0.1)    #Up\n";
+		//DeviceWait(3);
+		//event +="MonkeyRunner.sleep(3.0)\n";
+		//GetLayout();
+	}
+
+	/* 下滑 */
+	private void event_swipe_down(int x, int u, int d) {
+		// fw.open();
+		swipe(x, u+20, x, d-20, 1000);
+		//event += "device.drag((" + Integer.toString(x) + ", "+ Integer.toString(u + 20) + "), (" + Integer.toString(x)+ ", " + Integer.toString(d - 20) + "), 0.1)    #Down\n";
+		//DeviceWait(3);
+		//event +="MonkeyRunner.sleep(3.0)\n";
+		//GetLayout();
+	}
+
+	private void no_op() {
+		event += "# no_op\n";
+	}
+
+	public List<List<String>> getInst() {
+		return instructions;
+	}
+	
+
+	@Override
+	protected Object clone() throws CloneNotSupportedException {
+		// TODO Auto-generated method stub
+		return super.clone();
+	}
+	
+	private void touch(int x,int y,int delaytime){
+		cmd.run("adb shell input touchscreen swipe "+Integer.toString(x)+" "+Integer.toString(y)+" "+Integer.toString(x)+" "+Integer.toString(y)+Integer.toString(delaytime)+"\n");
+		LayoutChangeSwitch("adb shell input touchscreen swipe "+Integer.toString(x)+" "+Integer.toString(y)+" "+Integer.toString(x)+" "+Integer.toString(y)+Integer.toString(delaytime)+"\n");
+		//event+=("adb shell input touchscreen swipe "+Integer.toString(x)+" "+Integer.toString(y)+" "+Integer.toString(x)+" "+Integer.toString(y)+Integer.toString(delaytime)+"\n");
+}
+
+	private void touch(int x,int y){
+		cmd.run("adb shell input touchscreen tap "+Integer.toString(x)+" "+Integer.toString(y)+"\n");
+		LayoutChangeSwitch("adb shell input touchscreen tap "+Integer.toString(x)+" "+Integer.toString(y)+"\n");
+		//event+=("adb shell input touchscreen tap "+Integer.toString(x)+" "+Integer.toString(y)+"\n");
+	}
+	private void swipe(int xStart,int yStart,int xEnd,int yEnd,int delayTime){
+		cmd.run("adb shell input touchscreen swipe "+Integer.toString(xStart)+" "+Integer.toString(yStart)+" "+Integer.toString(xEnd)+" "+Integer.toString(yEnd)+" "+Integer.toString(delayTime)+"\n");
+		LayoutChangeSwitch("adb shell input touchscreen swipe "+Integer.toString(xStart)+" "+Integer.toString(yStart)+" "+Integer.toString(xEnd)+" "+Integer.toString(yEnd)+" "+Integer.toString(delayTime)+"\n");
+		//event+=("adb shell input touchscreen swipe "+Integer.toString(xStart)+" "+Integer.toString(yStart)+" "+Integer.toString(xEnd)+" "+Integer.toString(yEnd)+" "+Integer.toString(delayTime)+"\n");
+	}
+	
+	private void DeviceWait(int time){
+		try {
+			Thread.sleep(time*1000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	private void LayoutChangeSwitch(String ins)
+	{
+		LayoutReader lr =new LayoutReader("./Layout");
+		lr.getCurrentLayout();
+		try {
+			Thread.sleep(4000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		int nodeSize = lr.GetNodes().size();
+		if(nodeSize != lastNodeSize && lastNodeSize!=-2){
+			Command cmd = new Command();
+			cmd.run("adb shell am force-stop "+packageName);
+			DeviceWait(3);
+			cmd.run("adb shell am start "+packageName);
+			DeviceWait(3);
+			if(history!="history"){
+				InstructionRunner isr= new InstructionRunner();
+				isr.AutoRun(history);
+				ScriptGen sc =new ScriptGen(dis,lr.getLayoutName(),history);
+				sc.startGenScript(event+ins+"\n");
+			}
+			else{
+				ScriptGen sc =new ScriptGen(dis,lr.getLayoutName());
+				sc.startGenScript(event+ins+"\n");
+			}
+		}
+		else{
+			System.out.println("NodeSize = "+lr.GetNodes().size());
+			lastNodeSize = nodeSize;
+			event+=ins;
+		}
+	}
+}
